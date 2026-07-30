@@ -533,6 +533,94 @@
             resize: vertical;
         }
 
+        .photo-upload-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            font-size: 14px;
+        }
+
+        .photo-upload-hint {
+            font-size: 13px;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-left: 6px;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+            gap: 10px;
+        }
+
+        .photo-slot {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .photo-add-btn {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border: 2px dashed var(--accent-light);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--accent);
+            cursor: pointer;
+            font-family: 'Work Sans', sans-serif;
+            font-size: 22px;
+            transition: all 0.3s;
+        }
+
+        .photo-add-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--white);
+        }
+
+        .photo-add-btn span.plus-label {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .photo-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border: 2px solid var(--accent-light);
+            border-radius: 8px;
+        }
+
+        .photo-remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(15, 25, 41, 0.75);
+            color: var(--white);
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .photo-remove-btn:hover {
+            background: var(--primary-dark);
+        }
+
         .btn-submit {
             width: 100%;
             background: linear-gradient(135deg, var(--primary), var(--primary-light));
@@ -803,7 +891,7 @@
                 </div>
 
                 <div class="contact-form">
-                    <form id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+                    <form id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" enctype="multipart/form-data">
                         <input type="hidden" name="form-name" value="contact" />
                         <p style="display:none"><label>Don't fill this out: <input name="bot-field" /></label></p>
 
@@ -830,6 +918,23 @@
                         <div class="form-group">
                             <label for="message">Tell us about your project</label>
                             <textarea id="message" name="message" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <span class="photo-upload-label">Photos<span class="photo-upload-hint">(optional, up to 5)</span></span>
+                            <div class="photo-grid" id="photo-grid">
+                                <input type="file" id="photo-1" name="photo-1" accept="image/*" style="display:none">
+                                <input type="file" id="photo-2" name="photo-2" accept="image/*" style="display:none">
+                                <input type="file" id="photo-3" name="photo-3" accept="image/*" style="display:none">
+                                <input type="file" id="photo-4" name="photo-4" accept="image/*" style="display:none">
+                                <input type="file" id="photo-5" name="photo-5" accept="image/*" style="display:none">
+                                <div class="photo-slot" id="photo-add-slot">
+                                    <button type="button" class="photo-add-btn" id="photo-add-btn">
+                                        <span>+</span>
+                                        <span class="plus-label">Add Photo</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn-submit">Send Message</button>
@@ -864,6 +969,66 @@
             });
         });
 
+        // Photo upload (up to 5 photos)
+        const MAX_PHOTOS = 5;
+        const photoInputs = Array.from({ length: MAX_PHOTOS }, (_, i) => document.getElementById(`photo-${i + 1}`));
+        const photoGrid = document.getElementById('photo-grid');
+        const addSlot = document.getElementById('photo-add-slot');
+        const addBtn = document.getElementById('photo-add-btn');
+
+        function getNextEmptyPhotoInput() {
+            return photoInputs.find(input => !input.files || input.files.length === 0);
+        }
+
+        function updatePhotoAddSlotVisibility() {
+            addSlot.style.display = getNextEmptyPhotoInput() ? '' : 'none';
+        }
+
+        function addPhotoPreview(input) {
+            const slot = document.createElement('div');
+            slot.className = 'photo-slot';
+            slot.dataset.for = input.id;
+
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(input.files[0]);
+            img.alt = 'Selected photo';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'photo-remove-btn';
+            removeBtn.setAttribute('aria-label', 'Remove photo');
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', () => {
+                input.value = '';
+                slot.remove();
+                updatePhotoAddSlotVisibility();
+            });
+
+            slot.appendChild(img);
+            slot.appendChild(removeBtn);
+            photoGrid.insertBefore(slot, addSlot);
+        }
+
+        function resetPhotoUpload() {
+            photoGrid.querySelectorAll('.photo-slot:not(#photo-add-slot)').forEach(slot => slot.remove());
+            photoInputs.forEach(input => { input.value = ''; });
+            updatePhotoAddSlotVisibility();
+        }
+
+        addBtn.addEventListener('click', () => {
+            const input = getNextEmptyPhotoInput();
+            if (input) input.click();
+        });
+
+        photoInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                if (input.files && input.files.length > 0) {
+                    addPhotoPreview(input);
+                    updatePhotoAddSlotVisibility();
+                }
+            });
+        });
+
         // Form submission via Netlify Forms
         const contactForm = document.getElementById('contact-form');
         contactForm.addEventListener('submit', async function(e) {
@@ -875,12 +1040,12 @@
             try {
                 const response = await fetch('/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams(new FormData(contactForm)).toString(),
+                    body: new FormData(contactForm),
                 });
 
                 if (response.ok) {
                     contactForm.querySelectorAll('input, textarea').forEach(el => el.value = '');
+                    resetPhotoUpload();
                     document.getElementById('form-success').style.display = 'block';
                     submitBtn.style.display = 'none';
                 } else {
